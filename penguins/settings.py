@@ -169,7 +169,7 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 
 # Application version number
-APPLICATION_VERSION_NO = '1.0rc'
+APPLICATION_VERSION_NO = '1.1'
 
 JENKINS_TASKS = (
     'django_jenkins.tasks.with_coverage',
