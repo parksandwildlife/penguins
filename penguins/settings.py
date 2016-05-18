@@ -129,16 +129,11 @@ FLATPAGES_X_PARSER = ["flatpages_x.markdown_parser.parse", {}]
 
 # Authentication
 AUTH_USER_MODEL = "observations.PenguinUser"
-from ldap_email_auth import ldap_default_settings
-ldap_default_settings()
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 )
 LOGIN_URL = '/login/'
-#LOGIN_REDIRECT_URL = '/'
-#LOGIN_REDIRECT_URL_FAILURE = LOGIN_URL
 LOGOUT_URL = '/logout/'
-#LOGOUT_REDIRECT_URL = LOGOUT_URL
 ANONYMOUS_USER_ID = -1
 
 
