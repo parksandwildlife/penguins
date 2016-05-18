@@ -55,6 +55,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'dpaw_utils.middleware.SSOLoginMiddleware',
 )
 TEMPLATES = [
     {
@@ -80,6 +81,7 @@ TEMPLATES = [
         },
     }
 ]
+APPLICATION_VERSION_NO = '2.0'
 
 
 # Email settings
@@ -131,12 +133,12 @@ from ldap_email_auth import ldap_default_settings
 ldap_default_settings()
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'ldap_email_auth.auth.EmailBackend')
+)
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
-LOGIN_REDIRECT_URL_FAILURE = LOGIN_URL
+#LOGIN_REDIRECT_URL = '/'
+#LOGIN_REDIRECT_URL_FAILURE = LOGIN_URL
 LOGOUT_URL = '/logout/'
-LOGOUT_REDIRECT_URL = LOGOUT_URL
+#LOGOUT_REDIRECT_URL = LOGOUT_URL
 ANONYMOUS_USER_ID = -1
 
 
@@ -149,23 +151,6 @@ LEAFLET_CONFIG = {
     'SCALE': 'metric',
 }
 
-# Application version number
-APPLICATION_VERSION_NO = '1.1'
-
-JENKINS_TASKS = (
-    'django_jenkins.tasks.with_coverage',
-    #'django_jenkins.tasks.django_tests',   # select one django or
-    #'django_jenkins.tasks.dir_tests'      # directory tests discovery
-    'django_jenkins.tasks.run_pep8',
-    'django_jenkins.tasks.run_pyflakes',
-    #'django_jenkins.tasks.run_jslint',
-    #'django_jenkins.tasks.run_csslint',
-    'django_jenkins.tasks.run_sloccount',
-    #'django_jenkins.tasks.lettuce_tests',
-
-)
-
-APPLICATION_VERSION_NO = '1.1'
 
 # Logging configuration
 # Ensure that the logs directory exists:
