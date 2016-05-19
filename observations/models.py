@@ -110,7 +110,8 @@ class Camera(models.Model):
     """
     name = models.CharField(max_length=100)
     camera_key = models.CharField(max_length=100, default='')
-    site = models.ForeignKey(Site, blank=True, null=True)
+    site = models.ForeignKey(
+        Site, blank=True, null=True, on_delete=models.PROTECT)
     ip_address = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
@@ -119,7 +120,7 @@ class Camera(models.Model):
 
 @python_2_unicode_compatible
 class PenguinCount(ObservationBase):
-    site = models.ForeignKey(Site)
+    site = models.ForeignKey(Site, on_delete=models.PROTECT)
     date = models.DateField(default=timezone.now)
     comments = models.TextField(null=True, blank=True)
     civil_twilight = models.DateTimeField(null=True, blank=True)
@@ -169,7 +170,7 @@ class Video(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True, default="")
     date = models.DateField(_("Date"),
                             help_text=_("The date of the recording."))
-    camera = models.ForeignKey(Camera)
+    camera = models.ForeignKey(Camera, on_delete=models.PROTECT)
     file = models.FileField(upload_to='videos/')
     start_time = models.TimeField(
         _("Start time"),
@@ -274,7 +275,7 @@ class Video(models.Model):
 
 @python_2_unicode_compatible
 class PenguinVideoObservation(models.Model):
-    video = models.ForeignKey(Video)
+    video = models.ForeignKey(Video, on_delete=models.PROTECT)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
 
@@ -313,11 +314,12 @@ class PenguinObservation(ObservationBase):
     )
 
     date = models.DateTimeField(default=timezone.now)
-    site = models.ForeignKey(Site)
-    camera = models.ForeignKey(Camera, blank=True, null=True)
+    site = models.ForeignKey(Site, on_delete=models.PROTECT)
+    camera = models.ForeignKey(
+        Camera, blank=True, null=True, on_delete=models.PROTECT)
     observer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="observations")
+        settings.AUTH_USER_MODEL, related_name="observations",
+        on_delete=models.PROTECT)
     seen = models.PositiveSmallIntegerField(
         verbose_name='count',
         validators=[
@@ -362,10 +364,8 @@ class PenguinObservation(ObservationBase):
         null=True,
         verbose_name=_("Position in video"))
     video = models.ForeignKey(
-        Video,
-        default=None,
-        null=True,
-        verbose_name=_("Video filename"))
+        Video, default=None, null=True, blank=True,
+        verbose_name=_("Video filename"), on_delete=models.PROTECT)
     validated = models.BooleanField(default=True, verbose_name=_('Confirmed'))
 
     def clean_date(self):
