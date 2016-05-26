@@ -1,68 +1,25 @@
 from arrow import Arrow
 from collections import OrderedDict
 from django.contrib.admin.sites import AdminSite
-from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count
 from django.utils.timezone import now
 from django.utils.translation import ugettext_lazy as _
-from flatpages_x.admin import FlatPageImage, Revision
+from flatpages_x.admin import FlatPageAdmin, FlatPageImage, Revision
 from flatpages_x.models import FlatPage
 
-from .admin import (SiteAdmin, CameraAdmin, PenguinCountAdmin,
-                    PenguinObservationAdmin, VideoAdmin, HelpCMS)
-from .models import (Site, Camera, PenguinCount, PenguinObservation,
-                     Video, PenguinUser, GraphForm)
+from observations.forms import GraphForm
+from observations.models import Site
 
 
 User = get_user_model()
 
 
-class PenguinUserAdmin(UserAdmin):
-    fieldsets = (
-        (None, {'fields': ('username', 'password')}),
-        (_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
-        (_('Permissions'),
-         {'fields': ('is_active',
-                     'is_superuser',
-                     'is_staff',
-                     'last_login')}),
-        (_('Statistics'), {
-         'fields': ('observation_count', 'completion_count')}),
-    )
-    list_display = (
-        'username',
-        'email',
-        'first_name',
-        'last_name',
-        'is_superuser',
-        'is_staff',
-        'is_active',
-        'observation_count',
-        'completion_count',
-        'completion_hours')
-
-    list_filter = ('is_superuser',)
-
-    add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': ('username', 'password1', 'password2'),
-        }),
-        (_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
-    )
-
-    def changelist_view(self, request, extra_context=None):
-        context = {
-        }
-        context.update(extra_context or {})
-        return super(PenguinUserAdmin, self).changelist_view(request, context)
-
-    readonly_fields = ('last_login', 'observation_count', 'completion_count')
-
-    def response_add(self, request, obj, post_url_continue=None):
-        return super(PenguinUserAdmin, self).response_add(request, obj,
-                                                          post_url_continue)
+class HelpCMS(FlatPageAdmin):
+    fieldsets = ((None, {'fields': ('url', 'title', 'content_md', 'sites')}),)
+    list_display = ('url', 'title')
+    list_filter = ('sites',)
+    search_fields = ('url', 'title')
 
 
 class PenguinSite(AdminSite):
@@ -77,9 +34,7 @@ class PenguinSite(AdminSite):
         """
         today = Arrow.fromdatetime(now())
         last_year = today.replace(months=-11)
-
         site_dataset = OrderedDict()
-
         sites = []
 
         if request.user.is_superuser:
@@ -91,7 +46,6 @@ class PenguinSite(AdminSite):
                 pk=17)
 
         gf = GraphForm(request.GET)
-
         startd = last_year
         endd = today
 
@@ -100,7 +54,6 @@ class PenguinSite(AdminSite):
             endd = Arrow.fromdate(gf.cleaned_data['end_date'])
 
         difference = (endd - startd).days
-
         period = 'month'
 
         if difference < 31:
@@ -147,12 +100,6 @@ class PenguinSite(AdminSite):
 
 
 site = PenguinSite()
-site.register(PenguinUser, PenguinUserAdmin)
-site.register(Site, SiteAdmin)
-site.register(PenguinCount, PenguinCountAdmin)
-site.register(PenguinObservation, PenguinObservationAdmin)
-site.register(Video, VideoAdmin)
-site.register(Camera, CameraAdmin)
 site.register(FlatPage, HelpCMS)
 site.register(FlatPageImage)
 site.register(Revision)
