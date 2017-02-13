@@ -53,17 +53,41 @@ INSTALLED_APPS = (
     # actual app
     'observations'
 )
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.contrib.auth.context_processors.auth',
-    'django.contrib.messages.context_processors.messages',
-    'django.core.context_processors.media',
-    'django.core.context_processors.request',
-    'django.core.context_processors.csrf',
-    'django.core.context_processors.static',
-    'django.core.context_processors.debug',
-    'django.core.context_processors.i18n',
-    'penguins.context_processors.standard',
+MIDDLEWARE_CLASSES = (
+    'django.middleware.common.CommonMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'dpaw_utils.middleware.SSOLoginMiddleware',
 )
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [
+            os.path.join(BASE_DIR, 'observations', 'templates'),
+        ],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'debug': DEBUG,
+            'context_processors': [
+                'django.contrib.auth.context_processors.auth',
+                'django.core.context_processors.debug',
+                'django.core.context_processors.i18n',
+                'django.core.context_processors.media',
+                'django.core.context_processors.static',
+                'django.core.context_processors.tz',
+                'django.core.context_processors.request',
+                'django.core.context_processors.csrf',
+                'django.contrib.messages.context_processors.messages',
+                'penguins.context_processors.standard',
+            ],
+        },
+    }
+]
+APPLICATION_VERSION_NO = '2.0'
+
 
 # Email settings
 ADMINS = ('asi@dpaw.wa.gov.au',)
@@ -121,16 +145,11 @@ TEMPLATE_DIRS = (
 
 # Authentication
 AUTH_USER_MODEL = "observations.PenguinUser"
-from ldap_email_auth import ldap_default_settings
-ldap_default_settings()
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'ldap_email_auth.auth.EmailBackend')
+)
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
-LOGIN_REDIRECT_URL_FAILURE = LOGIN_URL
 LOGOUT_URL = '/logout/'
-LOGOUT_REDIRECT_URL = LOGOUT_URL
 ANONYMOUS_USER_ID = -1
 
 
@@ -145,8 +164,7 @@ TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 LEAFLET_CONFIG = {
     'SCALE': 'metric',
 }
-# Application version number
-APPLICATION_VERSION_NO = '1.0'
+
 
 # Logging configuration
 LOGGING = {

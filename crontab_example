@@ -1,0 +1,1 @@
+00 09 * * 1-5 root /usr/bin/curl -s http://localhost:PORT/cronjobs/video-import/ > /dev/null 2>&1

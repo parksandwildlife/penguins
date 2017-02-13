@@ -1,7 +1,6 @@
 from __future__ import unicode_literals, absolute_import
 
 import datetime
-from datetimewidget.widgets import DateWidget
 from django.db import models
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
@@ -12,7 +11,6 @@ from django.forms import ValidationError
 from django.core.files.storage import default_storage
 from django.conf import settings
 from django.utils import timezone
-from django import forms
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth.models import AbstractUser
@@ -20,9 +18,6 @@ import logging
 import os
 
 from observations.utils import civil_twilight
-
-
-logger = logging.getLogger(__name__)
 
 
 class ObservationBase(models.Model):
@@ -88,9 +83,7 @@ class PenguinUser(AbstractUser):
 
 @python_2_unicode_compatible
 class Site(geo_models.Model):
-
-    """
-    Represents a site that observations are recorded. It may or may not
+    """Represents a site that observations are recorded. It may or may not
     have multiple cameras associated with it.
     """
     name = models.CharField(max_length=100)
@@ -109,14 +102,13 @@ class Site(geo_models.Model):
 
 @python_2_unicode_compatible
 class Camera(models.Model):
-
-    """
-    A camera represents a single recording device at one of the sites that
+    """A camera represents a single recording device at one of the sites that
     penguin observations are to be recorded.
     """
     name = models.CharField(max_length=100)
     camera_key = models.CharField(max_length=100, default='')
-    site = models.ForeignKey(Site, blank=True, null=True)
+    site = models.ForeignKey(
+        Site, blank=True, null=True, on_delete=models.PROTECT)
     ip_address = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
@@ -125,7 +117,7 @@ class Camera(models.Model):
 
 @python_2_unicode_compatible
 class PenguinCount(ObservationBase):
-    site = models.ForeignKey(Site)
+    site = models.ForeignKey(Site, on_delete=models.PROTECT)
     date = models.DateField(default=timezone.now)
     comments = models.TextField(null=True, blank=True)
     civil_twilight = models.DateTimeField(null=True, blank=True)
@@ -164,7 +156,7 @@ class PenguinCount(ObservationBase):
                 "The 'Civil Twilight Date' cannot be in the future!")
 
     def __str__(self):
-        return "%s" % self.date
+        return '{}'.format(self.date)
 
     class Meta:
         ordering = ['-date']
@@ -175,7 +167,7 @@ class Video(models.Model):
     name = models.CharField(max_length=100, null=True, blank=True, default="")
     date = models.DateField(_("Date"),
                             help_text=_("The date of the recording."))
-    camera = models.ForeignKey(Camera)
+    camera = models.ForeignKey(Camera, on_delete=models.PROTECT)
     file = models.FileField(upload_to='videos/')
     start_time = models.TimeField(
         _("Start time"),
@@ -214,10 +206,10 @@ class Video(models.Model):
         return end - start
 
     def __str__(self):
-        return "%s - %s @ %s" % (self.camera.name, self.name, str(self.date))
+        return '{} - {} @ {}'.format(self.camera.name, self.name, self.date)
 
     @classmethod
-    def import_folder(cls, folder="beach_return_cams_2"):
+    def import_folder(cls, folder=settings.S3_FOLDER):
         logger = logging.getLogger('videos')
         logger.debug('Started import_folder method.')
         VIDEO_FORMATS = ('.mp4', '.avi', '.mkv')
@@ -280,7 +272,7 @@ class Video(models.Model):
 
 @python_2_unicode_compatible
 class PenguinVideoObservation(models.Model):
-    video = models.ForeignKey(Video)
+    video = models.ForeignKey(Video, on_delete=models.PROTECT)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
 
@@ -319,11 +311,12 @@ class PenguinObservation(ObservationBase):
     )
 
     date = models.DateTimeField(default=timezone.now)
-    site = models.ForeignKey(Site)
-    camera = models.ForeignKey(Camera, blank=True, null=True)
+    site = models.ForeignKey(Site, on_delete=models.PROTECT)
+    camera = models.ForeignKey(
+        Camera, blank=True, null=True, on_delete=models.PROTECT)
     observer = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="observations")
+        settings.AUTH_USER_MODEL, related_name="observations",
+        on_delete=models.PROTECT)
     seen = models.PositiveSmallIntegerField(
         verbose_name='count',
         validators=[
@@ -368,10 +361,8 @@ class PenguinObservation(ObservationBase):
         null=True,
         verbose_name=_("Position in video"))
     video = models.ForeignKey(
-        Video,
-        default=None,
-        null=True,
-        verbose_name=_("Video filename"))
+        Video, default=None, null=True, blank=True,
+        verbose_name=_("Video filename"), on_delete=models.PROTECT)
     validated = models.BooleanField(default=True, verbose_name=_('Confirmed'))
 
     def clean_date(self):
@@ -395,7 +386,7 @@ class ObserverCounter:
 @receiver(pre_delete, sender=PenguinObservation)
 def trigger_recount_prior_to_delete(sender, instance, **kwargs):
     instance.seen = 0
-    instance.save()  # TRIGGER THE APOCALYPSE
+    instance.save()
 
 
 @receiver(post_save, sender=PenguinObservation)
@@ -466,34 +457,3 @@ def update_user(sender, instance, created, **kwargs):
         instance.is_staff = True
         instance.groups.add(group)
         instance.save()
-
-
-class GraphForm(forms.Form):
-    start_date = forms.DateField(
-        widget=DateWidget(
-            attrs={
-                'id': "startTime",
-                'width': '45%'},
-            usel10n=False,
-            bootstrap_version=3))
-    end_date = forms.DateField(
-        widget=DateWidget(
-            attrs={
-                'id': "endTime"},
-            usel10n=False,
-            bootstrap_version=3))
-
-    def clean(self):
-        cleaned_data = super(GraphForm, self).clean()
-        start = cleaned_data.get("start_date")
-        end = cleaned_data.get("end_date")
-        if not start:
-            self._errors['start_date'] = self.error_class(
-                ["Please enter a start date"])
-        if not end:
-            self._errors['end_date'] = self.error_class(
-                ["Please enter an end date"])
-        if start and end and (end <= start):
-            raise forms.ValidationError(
-                "The end date is before the start date!")
-        return cleaned_data
