@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 from functools import update_wrapper
 
-from django.contrib.admin import ModelAdmin
+from django.contrib.admin import ModelAdmin, register
 from django.contrib.admin.utils import unquote
+from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.utils.encoding import force_text
@@ -15,29 +16,25 @@ from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin.utils import quote
 from django.template.response import TemplateResponse
 
+from daterange_filter.filter import DateRangeFilter
 from leaflet.admin import LeafletGeoAdmin
-from flatpages_x.admin import FlatPageAdmin
 from django.utils.safestring import mark_safe
 import datetime
-import logging
 import unicodecsv
-from observations.models import Video
+
+from observations.models import (
+    Site, Camera, PenguinCount, PenguinObservation, Video, PenguinUser)
 from observations.forms import SelectDateForm
-
-from daterange_filter.filter import DateRangeFilter
-
-logger = logging.getLogger(__name__)
-list_per_page = 100
+from observations.sites import site
 
 
 class DetailChangeList(ChangeList):
     def url_for_result(self, result):
         if self.model_admin.changelist_link_detail:
             pk = getattr(result, self.pk_attname)
-            return reverse('admin:%s_%s_detail' % (self.opts.app_label,
-                                                   self.opts.model_name),
-                           args=(quote(pk),),
-                           current_app=self.model_admin.admin_site.name)
+            return reverse(
+                'admin:{}_{}_detail'.format(self.opts.app_label, self.opts.model_name),
+                args=(quote(pk),), current_app=self.model_admin.admin_site.name)
         else:
             return super(DetailChangeList, self).url_for_result(result)
 
@@ -45,11 +42,9 @@ class DetailChangeList(ChangeList):
 class DetailAdmin(ModelAdmin):
     detail_template = None
     changelist_link_detail = False
-    # prevents django-guardian from clobbering change_form template (Scott)
     change_form_template = None
 
     def get_changelist(self, request, **kwargs):
-        #from swingers.admin.views import DetailChangeList
         return DetailChangeList
 
     def has_view_permission(self, request, obj=None):
@@ -59,7 +54,7 @@ class DetailAdmin(ModelAdmin):
         )
 
     def get_urls(self):
-        from django.conf.urls import patterns, url
+        from django.conf.urls import url
 
         def wrap(view):
             def wrapper(*args, **kwargs):
@@ -68,27 +63,14 @@ class DetailAdmin(ModelAdmin):
 
         info = self.model._meta.app_label, self.model._meta.model_name
 
-        urlpatterns = patterns(
-            '',
-            url(r'^$',
-                wrap(self.changelist_view),
-                name='%s_%s_changelist' % info),
-            url(r'^add/$',
-                wrap(self.add_view),
-                name='%s_%s_add' % info),
-            url(r'^(\d+)/history/$',
-                wrap(self.history_view),
-                name='%s_%s_history' % info),
-            url(r'^(\d+)/delete/$',
-                wrap(self.delete_view),
-                name='%s_%s_delete' % info),
-            url(r'^(\d+)/change/$',
-                wrap(self.change_view),
-                name='%s_%s_change' % info),
-            url(r'^(\d+)/$',
-                wrap(self.detail_view),
-                name='%s_%s_detail' % info),
-        )
+        urlpatterns = [
+            url(r'^$', wrap(self.changelist_view), name='%s_%s_changelist' % info),
+            url(r'^add/$', wrap(self.add_view), name='%s_%s_add' % info),
+            url(r'^(\d+)/history/$', wrap(self.history_view), name='%s_%s_history' % info),
+            url(r'^(\d+)/delete/$', wrap(self.delete_view), name='%s_%s_delete' % info),
+            url(r'^(\d+)/change/$', wrap(self.change_view), name='%s_%s_change' % info),
+            url(r'^(\d+)/$', wrap(self.detail_view), name='%s_%s_detail' % info),
+        ]
         return urlpatterns
 
     def detail_view(self, request, object_id, extra_context=None):
@@ -109,7 +91,7 @@ class DetailAdmin(ModelAdmin):
             'title': _('Detail %s') % force_text(opts.verbose_name),
             'object_id': object_id,
             'original': obj,
-            'is_popup': "_popup" in request.REQUEST,
+            'is_popup': '_popup' in request,
             'media': self.media,
             'app_label': opts.app_label,
             'opts': opts,
@@ -144,6 +126,54 @@ class BaseAdmin(ModelAdmin):
         return super(BaseAdmin, self).changelist_view(request, context)
 
 
+@register(PenguinUser, site=site)
+class PenguinUserAdmin(UserAdmin):
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        (_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
+        (_('Permissions'),
+         {'fields': ('is_active',
+                     'is_superuser',
+                     'is_staff',
+                     'last_login')}),
+        (_('Statistics'), {
+         'fields': ('observation_count', 'completion_count')}),
+    )
+    list_display = (
+        'username',
+        'email',
+        'first_name',
+        'last_name',
+        'is_superuser',
+        'is_staff',
+        'is_active',
+        'observation_count',
+        'completion_count',
+        'completion_hours')
+
+    list_filter = ('is_superuser',)
+
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'password1', 'password2'),
+        }),
+        (_('Personal info'), {'fields': ('first_name', 'last_name', 'email')}),
+    )
+
+    def changelist_view(self, request, extra_context=None):
+        context = {
+        }
+        context.update(extra_context or {})
+        return super(PenguinUserAdmin, self).changelist_view(request, context)
+
+    readonly_fields = ('last_login', 'observation_count', 'completion_count')
+
+    def response_add(self, request, obj, post_url_continue=None):
+        return super(PenguinUserAdmin, self).response_add(request, obj, post_url_continue)
+
+
+@register(Site, site=site)
 class SiteAdmin(DetailAdmin, LeafletGeoAdmin):
     actions = None
     list_display = ('name', 'location')
@@ -180,6 +210,7 @@ class SiteAdmin(DetailAdmin, LeafletGeoAdmin):
         return super(SiteAdmin, self).detail_view(request, object_id, context)
 
 
+@register(Camera, site=site)
 class CameraAdmin(DetailAdmin):
     actions = None
     list_display = ('name', 'site', 'camera_key', 'ip_address', 'videocount')
@@ -212,6 +243,7 @@ class CameraAdmin(DetailAdmin):
         return super(SiteAdmin, self).detail_view(request, object_id, context)
 
 
+@register(PenguinCount, site=site)
 class PenguinCountAdmin(ModelAdmin):
     actions = ['export_to_csv']
     list_display = ('date', 'sitelink', 'civil_twilight', 'sub_fifteen',
@@ -266,6 +298,7 @@ class PenguinCountAdmin(ModelAdmin):
     export_to_csv.short_description = ugettext_lazy("Export to CSV")
 
 
+@register(PenguinObservation, site=site)
 class PenguinObservationAdmin(BaseAdmin):
     actions = ['delete', 'export_to_csv']
     list_display = (
@@ -383,6 +416,7 @@ class PenguinObservationAdmin(BaseAdmin):
                 obj)
 
 
+@register(Video, site=site)
 class VideoAdmin(DetailAdmin):
     list_display = (
         'camera_expanded',
@@ -438,10 +472,3 @@ class VideoAdmin(DetailAdmin):
         }
         context.update(extra_context or {})
         return super(VideoAdmin, self).detail_view(request, object_id, context)
-
-
-class HelpCMS(FlatPageAdmin):
-    fieldsets = ((None, {'fields': ('url', 'title', 'content_md', 'sites')}),)
-    list_display = ('url', 'title')
-    list_filter = ('sites',)
-    search_fields = ('url', 'title')
