@@ -42,12 +42,9 @@ INSTALLED_APPS = (
     'django.contrib.gis',
     'django_extensions',
     'daterange_filter',
-    'compressor',
     'datetimewidget',
-    'south',
     'storages',
     'django_wsgiserver',
-    'django_nose',
     'rest_framework',
     'leaflet',
     # actual app
@@ -119,7 +116,6 @@ STATIC_URL = '/static/'
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-    'compressor.finders.CompressorFinder',
 )
 
 if env('USE_AWS', False):
@@ -158,9 +154,6 @@ COMPRESS_ENABLED = False
 MARKITUP_SET = 'markitup/sets/markdown'
 MARKITUP_SKIN = 'markitup/skins/markitup'
 MARKITUP_FILTER = ('markdown.markdown', {'safe_mode': False})
-SOUTH_TESTS_MIGRATE = False
-SKIP_SOUTH_TESTS = True
-TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
 LEAFLET_CONFIG = {
     'SCALE': 'metric',
 }
@@ -177,7 +170,6 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs/penguins.log'),
             'maxBytes': 1024 * 1024 * 5,
@@ -185,7 +177,6 @@ LOGGING = {
             'formatter': 'standard',
         },
         'video_file': {
-            'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': os.path.join(BASE_DIR, 'logs/videos.log'),
             'maxBytes': 1024 * 1024 * 5,
@@ -201,7 +192,7 @@ LOGGING = {
         },
         'videos': {
             'handlers': ['video_file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True
         }
     }
