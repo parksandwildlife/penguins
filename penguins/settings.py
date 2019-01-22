@@ -80,6 +80,8 @@ WSGI_APPLICATION = 'penguins.wsgi.application'
 DATABASES = {'default': dj_database_url.config()}
 CONN_MAX_AGE = None
 
+POSTGIS_VERSION = (2, 0, 3)
+
 # Internationalization
 SITE_ID = 1
 LANGUAGE_CODE = 'en-us'
